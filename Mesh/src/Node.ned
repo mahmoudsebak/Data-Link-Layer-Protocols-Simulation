@@ -22,6 +22,15 @@ simple Node
 {
     parameters:
         double lambda = default(2.0);
+        
+        // Noisy Channel Parametres
+        double modification_probability = default(0.8);
+        int modificationFrameLowerBit = default(0);
+        int modificationFrameUpperBit = default(50);
+        double loss_probability = default(0.3);
+        double duplication_probability = default(0.3);
+        double delay_probability = default(0.3);
+        double delay_lambda = default(2.0);
       // int n = default(4);
     gates:
         input ins[];

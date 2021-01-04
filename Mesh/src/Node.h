@@ -17,7 +17,9 @@
 #define __MESH_NODE_H_
 
 #include <omnetpp.h>
-
+#include <vector>
+#define MaxSEQ 7
+#define timeOut 10
 using namespace omnetpp;
 
 /**
@@ -25,6 +27,26 @@ using namespace omnetpp;
  */
 class Node : public cSimpleModule
 {
+    // Noisy Channel Members
+    double modification_probability;
+    int modificationFrameLowerBit;
+    int modificationFrameUpperBit;
+    double loss_probability;
+    double duplication_probability;
+    double delay_probability;
+    double delay_lambda;
+    cMessage* modifyMsg(cMessage* msg);
+    bool NoisySend(cMessage*& msg);
+
+    // GoBackN Members
+    int nextFrameToSend, AckExpected, frameExpected, nBuffered;
+    cMessage* buffer [MaxSEQ];
+    std::vector<int> Ack;
+    void send_Data();
+    void start_Timer();
+    void goBackN(cMessage* msg, bool selfMsg);
+    bool between(int a, int b, int c);
+    bool repeat(int ackNo);
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
