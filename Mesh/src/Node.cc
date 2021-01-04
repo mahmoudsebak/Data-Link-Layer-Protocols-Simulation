@@ -80,7 +80,7 @@ void Node::start_Timer()
     ss<<nextFrameToSend;
     scheduleAt(simTime() + timeOut, new cMessage(ss.str().c_str()));
 }
-void Node::send_data()
+void Node::send_Data()
 {
     //prepare msg
     bool duplicated = NoisySend(buffer[nBuffered]);
@@ -104,14 +104,14 @@ bool Node::repeat(int ackNo)
     }
     return true;
 }
-void Node::goBackN(cMessage* msg, repeat)
+void Node::goBackN(cMessage* msg, bool repeat)
 {
     if(repeat)
     {
         nextFrameToSend = AckExpected;
         for (int i = 1; i < nBuffered; i++)
         {
-            send_data();
+            send_Data();
         }
     }
     else if (msg != nullptr)
@@ -129,7 +129,7 @@ void Node::goBackN(cMessage* msg, repeat)
     {
         cMessage* toSend; // read next frame
         buffer[nBuffered++] = toSend;
-        send_data();
+        send_Data();
     }
 }
 
@@ -139,7 +139,7 @@ cMessage* Node::modifyMsg(cMessage* msg)
 
     std::string msgAsString = msg->str();
     modificationFrameLowerBit = std::max(0, modificationFrameLowerBit);
-    modificationFrameUpperBit = std::min(modificationFrameUpperBit, msgAsString.size());
+    modificationFrameUpperBit = std::min(modificationFrameUpperBit, int(msgAsString.size()));
     int bit = int(uniform(modificationFrameLowerBit, modificationFrameUpperBit));
     msgAsString[bit] = ~msgAsString[bit];
     delete(msg);
