@@ -16,10 +16,11 @@
 #ifndef __MESH_NODE_H_
 #define __MESH_NODE_H_
 
+#include "FramedMessage_m.h"
 #include <omnetpp.h>
 #include <vector>
 #define MaxSEQ 7
-#define timeOut 10
+#define timeOut 1
 using namespace omnetpp;
 
 /**
@@ -35,16 +36,17 @@ class Node : public cSimpleModule
     double duplication_probability;
     double delay_probability;
     double delay_lambda;
-    cMessage* modifyMsg(cMessage* msg);
-    bool NoisySend(cMessage*& msg);
+    std::string modifyMsg(std::string msg);
+    bool NoisySend(FramedMessage_Base*& msg);
 
     // GoBackN Members
-    int nextFrameToSend, AckExpected, frameExpected, nBuffered;
-    cMessage* buffer [MaxSEQ];
+    int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest;
+    std::string buffer [MaxSEQ + 1];
     std::vector<int> Ack;
+    std::vector<FramedMessage_Base*> timers;
     void send_Data();
     void start_Timer();
-    void goBackN(cMessage* msg, bool selfMsg);
+    void goBackN(FramedMessage_Base* msg, bool selfMsg);
     bool between(int a, int b, int c);
     bool repeat(int ackNo);
   protected:
