@@ -19,9 +19,16 @@ Define_Module(Node);
 
 void Node::initialize()
 {
-    double interval = exponential(1 / par("lambda").doubleValue());
-    scheduleAt(simTime() + interval, new FramedMessage_Base(""));
-
+    dest = 0;
+    double interval2 = exponential(1 / par("lambda").doubleValue());
+    if(getIndex() == 0)
+        scheduleAt(simTime() + interval2, new FramedMessage_Base("Continue"));
+    else if(getIndex() == 1)
+        scheduleAt(simTime() + interval2, new FramedMessage_Base("Continue"));
+    else
+        return;
+    for (int i=0; i< MaxSEQ+1; i++)
+        timers[i] = nullptr;
     // Initialize Noisy Channel Members
     modification_probability = par("modification_probability").doubleValue();
     modificationFrameLowerBit = par("modificationFrameLowerBit").intValue();
@@ -35,11 +42,13 @@ void Node::initialize()
     AckExpected = 0;
     frameExpected = 0;
     nBuffered = 0;
-    dest =0;
+
 }
 
 void Node::handleMessage(cMessage *msg)
 {
+//    if (getIndex() != 0)// && getIndex() != 1)
+//                return;
     FramedMessage_Base* fmsg = check_and_cast<FramedMessage_Base*>(msg);
     if (fmsg->isSelfMessage()) { //Host wants to send
 
@@ -53,8 +62,7 @@ void Node::handleMessage(cMessage *msg)
 //        if (rand > getIndex())
 //            dest--;
 
-        if (getIndex() != 0 && getIndex() != 1)
-            return;
+
           //  dest = 0;
         //else
           //  return;
@@ -63,49 +71,59 @@ void Node::handleMessage(cMessage *msg)
 //        ss << rand;
         ss << dest;
         EV << "Sending to "<< ss.str() <<" from source " << getIndex() << "\n";
-        delete fmsg;
-        fmsg = new FramedMessage_Base("Hello");
-        fmsg->setPayload(buffer[nBuffered].c_str());
-        fmsg->setSeq_num(nextFrameToSend);
-        fmsg->setAck_num(AckExpected);
+//        delete fmsg;
+//        fmsg = new FramedMessage_Base("Hello");
+//        fmsg->setPayload(buffer[nBuffered].c_str());
+//        fmsg->setSeq_num(nextFrameToSend);
+//        fmsg->setAck_num(AckExpected);
 
         /////////////////////////////////////////////////////////////////
         // To Be Changed According to Main Logic
         // timeOut
-        bool repeat = true;
-        if(strcmp(msg->getName(), "Continue") == 0)
+        //bool repeat = false;
+        if(strcmp(msg->getName(), "Continue") != 0)
         {
-            repeat = false;
-            delete(msg);
+            //bool repeat = repeat1(atoi(msg->getName()));
+            //if (repeat)
+                goBackN(fmsg, 2);
+            //else
+              //  goBackN(fmsg, 1);
+            //delete(msg);
         }
-        goBackN(fmsg, repeat);
+        else
+            goBackN(fmsg, 1);
         ////////////////////////////////////////////////////////////////
-        double interval = exponential(1 / par("lambda").doubleValue());
-        EV << ". Scheduled a new packet after " << interval << "s";
-        scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
+        //double interval = exponential(1 / par("lambda").doubleValue());
+        //EV << ". Scheduled a new packet after " << interval << "s";
     }
     else {
-        goBackN(fmsg, false);
-        //atoi functions converts a string to int
-        //Check if this is the proper destination
-        if (atoi(fmsg->getName()) == getIndex())
-            bubble("Message received");
-        else
-            bubble("Wrong destination");
-        delete fmsg;
+        if(strcmp(msg->getName(), "Continue") != 0)
+        {
+            goBackN(fmsg, 0);
+            //atoi functions converts a string to int
+            //Check if this is the proper destination
+            if (atoi(fmsg->getName()) == getIndex())
+                bubble("Message received");
+            else
+                bubble("Wrong destination");
+            delete fmsg;
+        }
     }
+    //delete fmsg;
 }
 void Node::start_Timer()
 {
     std::stringstream ss;
     ss<<nextFrameToSend;
     FramedMessage_Base* timer =  new FramedMessage_Base(ss.str().c_str());
-    timers.push_back(timer);
     scheduleAt(simTime() + timeOut, timer);
+    //timers.push_back(timer);
+    timers[nextFrameToSend % (MaxSEQ+1)] = timer;
 }
-void Node::send_Data()
+void Node::send_Data(FramedMessage_Base* fmsg)
 {
-    FramedMessage_Base* fmsg = new FramedMessage_Base("Hello");
+    //delete(fmsg);
+    fmsg = new FramedMessage_Base("Hello");
     fmsg->setPayload(buffer[nBuffered].c_str());
     fmsg->setSeq_num(nextFrameToSend);
     fmsg->setAck_num((frameExpected + MaxSEQ) % (MaxSEQ + 1));
@@ -115,35 +133,43 @@ void Node::send_Data()
     EV << std::endl;
     EV << "Ack number " << fmsg->getAck_num();
     EV << std::endl;
-
-    //send(fmsg, "outs", dest);
-    //bool duplicated = false;
-    bool duplicated = NoisySend(fmsg);
+    send(fmsg, "outs", dest);
+    //sendDelayed(fmsg, 0.1, "outs", dest);
+    bool duplicated = false;
+    //bool duplicated = NoisySend(fmsg);
+    nBuffered ++;
     start_Timer();
     nextFrameToSend += (duplicated)? 0 : 1;
     // fileIterator += (duplicated)? 0 : 1;
 }
 bool Node::between(int a, int b, int c)
 {
-    return (((a<=b) && (b<c)) || ((c<a) && (a<=b))||((b<c) &&(c<a)))? true : false;
+    return (((a<=b) && (b<c)) || ((c<a) && (a<=b)) || ((b<c) &&(c<a)))? true : false;
 }
-bool Node::repeat(int ackNo)
+bool Node::repeat1(int ackNo)
 {
     for(int i=0; i<Ack.size(); i++)
     {
         if (Ack[i] == ackNo)
         {
             Ack.erase(Ack.begin() + i);
+            EV<<"Deleted Successfully ";
+            EV<<ackNo;
+            EV<<std::endl;
             return false;
         }
     }
     return true;
 }
-void Node::goBackN(FramedMessage_Base* msg, bool repeat)
+void Node::goBackN(FramedMessage_Base* msg, int whichCase)
 {
+    //double interval1 = exponential(1 / par("lambda").doubleValue());
+    double interval1 = 0.1;
     // Frame arrival
-    if (!msg->isSelfMessage() && !repeat)
+    //if (!msg->isSelfMessage() && !repeat)
+    switch (whichCase)
     {
+    case 0:
         EV << "Frame arrival " << std::endl;
         EV << "Payload " << msg->getPayload();
         EV << std::endl;
@@ -153,42 +179,73 @@ void Node::goBackN(FramedMessage_Base* msg, bool repeat)
         EV << std::endl;
         if(frameExpected == msg->getSeq_num())
             frameExpected++;
+        EV<<"ACKEXPECTED"<<AckExpected<<std::endl;
+        EV<<"GETACKNUM"<<msg->getAck_num()<<std::endl;
+        EV<<"NEXTTOSEND"<<nextFrameToSend<<std::endl;
         while(between(AckExpected, msg->getAck_num(), nextFrameToSend))
         {
             nBuffered--;
-            for(int i=0; i<timers.size(); i++)
-                if (atoi(timers[i]->getName()) == AckExpected)
-                {
-                    EV<<"Deleted Successfully ";
-                    //EV<<atoi(timers[i]->getName().to_ttring();
-
-                    cancelAndDelete(timers[i]);
-                    //break;
-                }
+            //if(atoi(timers[i]->getName()) == AckExpected)
+            if(timers[AckExpected] != nullptr)
+            {
+                EV<<"CancelANDDELETE ";
+                cancelAndDelete(timers[AckExpected]);
+                timers[AckExpected] = nullptr;
+            }
+            //int temp = -1;
+//            for(int i=0; i<timers.size(); i++)
+//                if (timers[i]->isSelfMessage() && atoi(timers[i]->getName()) == AckExpected)
+//                {
+//                    EV<<"Deleted Successfully ";
+//                    EV<<atoi(timers[i]->getName());
+//                    EV<<std::endl;
+//                   //temp = atoi(timers[i]->getName());
+//                    //temp = i;
+//                    cancelEvent(timers[i]);
+//                    //break;
+//                }
+//            if(temp != -1)
+//            {
+//                timers.erase(timers.begin()+temp);
+//                cancelEvent(timers[temp]);
+//            }
+            //Ack.push_back(AckExpected);
+            //EV<<"Accepted Ack No";
+            //EV<<AckExpected;
+            EV<<std::endl;
             AckExpected++;
+            AckExpected %= (MaxSEQ);
         }
         //delete(msg);
-    }
+        break;
     // TODO: Read Next frame from file
-    if(nBuffered < MaxSEQ)
-    {
-        EV << "Send next frame " << std::endl;
-        buffer[nBuffered++] = "Hello";
-        send_Data();
-    }
+    //else if(send && nBuffered < MaxSEQ)
+    case 1:
+        EV<<nBuffered<<std::endl;
+        if (nBuffered < MaxSEQ){
+            EV << "Send next frame " << std::endl;
+            buffer[nBuffered] = "Hello";
+            delete(msg);
+            send_Data(msg);
+            scheduleAt(simTime() + interval1, new FramedMessage_Base("Continue"));
+        }
+        else
+            //goBackN(msg, 0);
+            scheduleAt(simTime() + interval1, new FramedMessage_Base("Continue"));
+        break;
     // Re-send if there is timeout
-    else
-    {
+    //else if(repeat)
+    case 2:
         delete(msg);
         EV << "Repeat " << std::endl;
         nextFrameToSend = AckExpected;
         for (int i = 1; i <= nBuffered; i++)
         {
-            send_Data();
+            send_Data(msg);
         }
+//        delete(msg);
     }
 }
-
 std::string Node::modifyMsg(std::string msg)
 {
     modificationFrameLowerBit = std::max(0, modificationFrameLowerBit);
@@ -201,8 +258,8 @@ std::string Node::modifyMsg(std::string msg)
 }
 bool Node::NoisySend(FramedMessage_Base*& msg)
 {
-    if(uniform(0,1) < modification_probability)
-        msg->setPayload(modifyMsg(msg->getPayload()).c_str());
+    //if(uniform(0,1) < modification_probability)
+      //  msg->setPayload(modifyMsg(msg->getPayload()).c_str());
     if(uniform(0,1) < loss_probability)
     {
         EV<<"Dropped";
@@ -211,7 +268,8 @@ bool Node::NoisySend(FramedMessage_Base*& msg)
     {
         EV<<"Delayed";
         double delay = exponential(1 / delay_lambda);
-        sendDelayed(msg, delay, "outs", dest);
+        send(msg, "outs", dest);
+        //sendDelayed(msg, delay, "outs", dest);
     }
     else if(uniform(0,1) < duplication_probability)
     {

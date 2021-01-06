@@ -21,7 +21,8 @@
 #include <vector>
 #include <bitset>
 #define MaxSEQ 7
-#define timeOut 5
+#define timeOut 1
+#define interval 0.5
 using namespace omnetpp;
 
 /**
@@ -44,12 +45,14 @@ class Node : public cSimpleModule
     int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest;
     std::string buffer [MaxSEQ + 1];
     std::vector<int> Ack;
-    std::vector<FramedMessage_Base*> timers;
-    void send_Data();
+    //bool Ack2 [MaxSEQ+1];
+    //std::vector<FramedMessage_Base*> timers;
+    FramedMessage_Base* timers[MaxSEQ + 1];
+    void send_Data(FramedMessage_Base* fmsg);
     void start_Timer();
-    void goBackN(FramedMessage_Base* msg, bool selfMsg);
+    void goBackN(FramedMessage_Base* msg, int whichCase);
     bool between(int a, int b, int c);
-    bool repeat(int ackNo);
+    bool repeat1(int ackNo);
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
