@@ -514,5 +514,3 @@ void *FramedMessageDescriptor::getFieldStructValuePointer(void *object, int fiel
         default: return nullptr;
     }
 }
-
-

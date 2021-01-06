@@ -1,7 +1,3 @@
-//
-// Generated file, do not edit! Created by nedtool 5.6 from FramedMessage.msg.
-//
-
 #ifndef __FRAMEDMESSAGE_M_H
 #define __FRAMEDMESSAGE_M_H
 
@@ -44,7 +40,6 @@
  * {
  *   private:
  *     void copy(const FramedMessage& other) { ... }
-
  *   public:
  *     FramedMessage(const char *name=nullptr, short kind=0) : FramedMessage_Base(name,kind) {}
  *     FramedMessage(const FramedMessage& other) : FramedMessage_Base(other) {copy(other);}
@@ -100,4 +95,3 @@ class FramedMessage_Base : public ::omnetpp::cPacket
 
 
 #endif // ifndef __FRAMEDMESSAGE_M_H
-

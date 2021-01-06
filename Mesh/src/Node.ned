@@ -24,7 +24,7 @@ simple Node
         double lambda = default(2.0);
         
         // Noisy Channel Parametres
-        double modification_probability = default(0.8);
+        double modification_probability = default(0.2);
         int modificationFrameLowerBit = default(0);
         int modificationFrameUpperBit = default(50);
         double loss_probability = default(0.3);

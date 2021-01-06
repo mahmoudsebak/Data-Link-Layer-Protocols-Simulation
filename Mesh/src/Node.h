@@ -19,8 +19,9 @@
 #include "FramedMessage_m.h"
 #include <omnetpp.h>
 #include <vector>
+#include <bitset>
 #define MaxSEQ 7
-#define timeOut 1
+#define timeOut 5
 using namespace omnetpp;
 
 /**
