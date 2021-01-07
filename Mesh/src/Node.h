@@ -43,6 +43,7 @@ class Node : public cSimpleModule
     int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest;
     std::string buffer [MaxSEQ + 1];
     std::vector<int> Ack;
+    int id;
     FramedMessage_Base* timers[MaxSEQ + 1];
 
     void send_Data();
@@ -53,6 +54,10 @@ class Node : public cSimpleModule
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
+    std::string bitStuffing(const std::string& inputStream);
+    std::string bitDeStuffing(const std::string& inputStream);
+    std::string hammingGenerator(const std::string& inputStream);
+    std::string errorDetectionCorrectionHamming(std::string message);
 };
 
 #endif

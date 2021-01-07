@@ -2,18 +2,26 @@ package mesh;
 
 @license(LGPL);
 
-import ned.IdealChannel;
-
-network Mesh
+network Network
 {
     parameters:
-        int n = default(5);
+        int N = default(5);
+    	
     submodules:
-        nodes[n]: Node ;
-    connections: 
-       for i=0..sizeof(nodes)-1, for j=i+1..sizeof(nodes)-1
-       {
-           nodes[i].outs++ --> IdealChannel --> nodes[j].ins++;
-           nodes[i].ins++ <-- IdealChannel <-- nodes[j].outs++;
-       }  
+        orchesterator: Orchestrator;
+        nodes[N]: Node;
+      
+     connections:
+         for i=0..sizeof(nodes)-1, for j=i+1..sizeof(nodes)-1 {
+         		nodes[i].outs++ --> nodes[j].ins++;
+         		nodes[i].ins++ <-- nodes[j].outs++;
+         }
+         
+         
+         for i=0..sizeof(nodes)-1 {
+         	nodes[i].outs++ --> orchesterator.ins++;
+         	nodes[i].ins++ <-- orchesterator.outs++;
+         }
+         
+           
 }
