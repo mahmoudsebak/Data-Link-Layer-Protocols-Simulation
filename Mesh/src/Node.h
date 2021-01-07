@@ -21,7 +21,7 @@
 #include <vector>
 #include <bitset>
 #define MaxSEQ 7
-#define timeOut 1
+#define timeOut 0.3
 #define interval 0.5
 using namespace omnetpp;
 

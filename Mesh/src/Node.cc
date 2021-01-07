@@ -1,18 +1,5 @@
 //
 // This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Lesser General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-// 
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Lesser General Public License for more details.
-// 
-// You should have received a copy of the GNU Lesser General Public License
-// along with this program.  If not, see http://www.gnu.org/licenses/.
-// 
-
 #include "Node.h"
 
 Define_Module(Node);
@@ -111,34 +98,41 @@ void Node::handleMessage(cMessage *msg)
 }
 void Node::start_Timer()
 {
+    if(timers[nextFrameToSend] != nullptr)
+    {
+        EV<<"Timer "<<nextFrameToSend <<" is already created"<<std::endl;
+        return;
+    }
     std::stringstream ss;
     ss<<nextFrameToSend;
     FramedMessage_Base* timer =  new FramedMessage_Base(ss.str().c_str());
     scheduleAt(simTime() + timeOut, timer);
-    //timers.push_back(timer);
-    timers[nextFrameToSend % (MaxSEQ+1)] = timer;
+    timers[nextFrameToSend] = timer;
+    EV<<"CREATED Timer "<<nextFrameToSend<<std::endl;
 }
 void Node::send_Data(FramedMessage_Base* fmsg)
 {
     //delete(fmsg);
     fmsg = new FramedMessage_Base("Hello");
-    fmsg->setPayload(buffer[nBuffered].c_str());
+    fmsg->setPayload(buffer[nextFrameToSend].c_str());
     fmsg->setSeq_num(nextFrameToSend);
     fmsg->setAck_num((frameExpected + MaxSEQ) % (MaxSEQ + 1));
-    EV << "Payload " << fmsg->getPayload();
-    EV << std::endl;
-    EV << "Sequence number " << fmsg->getSeq_num();
-    EV << std::endl;
-    EV << "Ack number " << fmsg->getAck_num();
-    EV << std::endl;
-//    send(fmsg, "outs", dest);
-    //sendDelayed(fmsg, 0.1, "outs", dest);
+
+    EV << "Payload " << fmsg->getPayload() << std::endl;
+    EV << "Sequence number " << fmsg->getSeq_num() << std::endl;
+    EV << "Ack number " << fmsg->getAck_num() << std::endl;
+
 //    bool duplicated = false;
+//    send(fmsg, "outs", dest);
+//    sendDelayed(fmsg, 0.1, "outs", dest);
     bool duplicated = NoisySend(fmsg);
-    nBuffered++;
+
     start_Timer();
+
     nextFrameToSend += (duplicated)? 0 : 1;
-    // fileIterator += (duplicated)? 0 : 1;
+    nextFrameToSend %= (MaxSEQ + 1);
+
+//    fileIterator += (duplicated)? 0 : 1;
 }
 bool Node::between(int a, int b, int c)
 {
@@ -171,31 +165,34 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
     {
     case 0:
         EV << "Frame arrival " << std::endl;
-        EV << "Payload " << msg->getPayload();
-        EV << std::endl;
-        EV << "Sequence number received" << msg->getSeq_num() << " and expected " <<frameExpected;
-        EV << std::endl;
-        EV << "Ack number " << msg->getAck_num();
-        EV << std::endl;
+        EV << "Payload " << msg->getPayload() << std::endl;
+        EV << "Sequence number received " << msg->getSeq_num() << " and expected " << frameExpected << std::endl;
+        EV << "Ack number " << msg->getAck_num() << std::endl;
 
         if(frameExpected == msg->getSeq_num())
+        {
             frameExpected++;
+            frameExpected %= (MaxSEQ + 1);
+        }
 //        else
 //            return;
 
-        EV<<"ACKEXPECTED"<<AckExpected<<std::endl;
-        EV<<"GETACKNUM"<<msg->getAck_num()<<std::endl;
-        EV<<"NEXTTOSEND"<<nextFrameToSend<<std::endl;
+        EV<<"ACKEXPECTED "<<AckExpected<<std::endl;
+        EV<<"GETACKNUM "<<msg->getAck_num()<<std::endl;
+        EV<<"NEXTTOSEND "<<nextFrameToSend<<std::endl;
+
         while(between(AckExpected, msg->getAck_num(), nextFrameToSend))
         {
             nBuffered--;
             //if(atoi(timers[i]->getName()) == AckExpected)
-            if(timers[AckExpected % (MaxSEQ+1)] != nullptr)
+            if(timers[AckExpected] != nullptr)
             {
-                EV<<"CancelANDDELETE ";
-                cancelAndDelete(timers[AckExpected % (MaxSEQ+1)]);
-                timers[AckExpected % (MaxSEQ+1)] = nullptr;
+                EV<<"CANCELANDDELETE Timer "<<AckExpected<<std::endl;
+                cancelAndDelete(timers[AckExpected]);
+                timers[AckExpected] = nullptr;
             }
+            AckExpected++;
+            AckExpected %= (MaxSEQ + 1);
             //int temp = -1;
 //            for(int i=0; i<timers.size(); i++)
 //                if (timers[i]->isSelfMessage() && atoi(timers[i]->getName()) == AckExpected)
@@ -213,12 +210,12 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
 //                timers.erase(timers.begin()+temp);
 //                cancelEvent(timers[temp]);
 //            }
-            //Ack.push_back(AckExpected);
-            //EV<<"Accepted Ack No";
-            //EV<<AckExpected;
-            EV<<std::endl;
-            AckExpected++;
-//            AckExpected %= (MaxSEQ);
+
+//            Ack.push_back(AckExpected);
+//            EV<<"Accepted Ack No";
+//            EV<<AckExpected;
+//            EV<<std::endl;
+
         }
         //delete(msg);
         break;
@@ -228,7 +225,8 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         EV<<nBuffered<<std::endl;
         if (nBuffered < MaxSEQ){
             EV << "Send next frame " << std::endl;
-            buffer[nBuffered] = "Hello";
+            buffer[nextFrameToSend] = "Hello";
+            nBuffered++;
             delete(msg);
             send_Data(msg);
             scheduleAt(simTime() + interval1, new FramedMessage_Base("Continue"));
@@ -242,10 +240,15 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
     case 2:
         delete(msg);
         EV << "Repeat " << std::endl;
-        int x  = nBuffered;
-        nBuffered -= (nextFrameToSend - AckExpected);
+//        int x  = nBuffered;
+//        nBuffered -= (nextFrameToSend - AckExpected);
+//        nextFrameToSend = AckExpected;
+//        for (int i = nBuffered; i < x; i++)
+//        {
+//            send_Data(msg);
+//        }
         nextFrameToSend = AckExpected;
-        for (int i = nBuffered; i < x; i++)
+        for(int i = 1; i <= nBuffered; i++)
         {
             send_Data(msg);
         }
@@ -268,21 +271,22 @@ bool Node::NoisySend(FramedMessage_Base*& msg)
       //  msg->setPayload(modifyMsg(msg->getPayload()).c_str());
     if(uniform(0,1) < loss_probability)
     {
-        EV<<"Dropped";
-    }
-    else if(uniform(0,1) < delay_probability)
-    {
-        EV<<"Delayed";
-        double delay = exponential(1 / delay_lambda);
-//        send(msg, "outs", dest);
-        sendDelayed(msg, delay, "outs", dest);
-    }
-    else if(uniform(0,1) < duplication_probability)
-    {
-        EV<<"Duplicated";
-        send(msg, "outs", dest);
+        EV<<"Dropped"<<std::endl;
         return true;
     }
+//    else if(uniform(0,1) < delay_probability)
+//    {
+//        EV<<"Delayed";
+//        double delay = exponential(1 / delay_lambda);
+////        send(msg, "outs", dest);
+//        sendDelayed(msg, delay, "outs", dest);
+//    }
+//    else if(uniform(0,1) < duplication_probability)
+//    {
+//        EV<<"Duplicated";
+//        send(msg, "outs", dest);
+//        return true;
+//    }
     else
     {
         send(msg, "outs", dest);
