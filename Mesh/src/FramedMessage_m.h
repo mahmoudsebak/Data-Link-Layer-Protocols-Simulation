@@ -70,12 +70,12 @@ class FramedMessage_Base : public ::omnetpp::cPacket
     // protected and unimplemented operator==(), to prevent accidental usage
     bool operator==(const FramedMessage_Base&);
     // make constructors protected to avoid instantiation
-    FramedMessage_Base(const FramedMessage_Base& other);
     // make assignment operator protected to force the user override it
     FramedMessage_Base& operator=(const FramedMessage_Base& other);
 
   public:
     virtual ~FramedMessage_Base();
+    FramedMessage_Base(const FramedMessage_Base& other);
     FramedMessage_Base(const char *name=nullptr, short kind=0);
     virtual FramedMessage_Base *dup() const override {return new FramedMessage_Base(*this);}
     virtual void parsimPack(omnetpp::cCommBuffer *b) const override;

@@ -20,14 +20,12 @@
 #include <omnetpp.h>
 #include <vector>
 #include <bitset>
+#include <queue>
 #define MaxSEQ 7
-#define timeOut 0.3
-#define interval 0.5
+#define timeOut 0.2
+#define interval 0.1
 using namespace omnetpp;
 
-/**
- * TODO - Generated class
- */
 class Node : public cSimpleModule
 {
     // Noisy Channel Members
@@ -45,10 +43,9 @@ class Node : public cSimpleModule
     int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest;
     std::string buffer [MaxSEQ + 1];
     std::vector<int> Ack;
-    //bool Ack2 [MaxSEQ+1];
-    //std::vector<FramedMessage_Base*> timers;
     FramedMessage_Base* timers[MaxSEQ + 1];
-    void send_Data(FramedMessage_Base* fmsg);
+
+    void send_Data();
     void start_Timer();
     void goBackN(FramedMessage_Base* msg, int whichCase);
     bool between(int a, int b, int c);
