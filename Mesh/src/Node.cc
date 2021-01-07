@@ -100,8 +100,6 @@ void Node::handleMessage(cMessage *msg)
         if(strcmp(msg->getName(), "Continue") != 0)
         {
             goBackN(fmsg, 0);
-            //atoi functions converts a string to int
-            //Check if this is the proper destination
             if (atoi(fmsg->getName()) == getIndex())
                 bubble("Message received");
             else
@@ -133,11 +131,11 @@ void Node::send_Data(FramedMessage_Base* fmsg)
     EV << std::endl;
     EV << "Ack number " << fmsg->getAck_num();
     EV << std::endl;
-    send(fmsg, "outs", dest);
+//    send(fmsg, "outs", dest);
     //sendDelayed(fmsg, 0.1, "outs", dest);
-    bool duplicated = false;
-    //bool duplicated = NoisySend(fmsg);
-    nBuffered ++;
+//    bool duplicated = false;
+    bool duplicated = NoisySend(fmsg);
+    nBuffered++;
     start_Timer();
     nextFrameToSend += (duplicated)? 0 : 1;
     // fileIterator += (duplicated)? 0 : 1;
@@ -145,6 +143,8 @@ void Node::send_Data(FramedMessage_Base* fmsg)
 bool Node::between(int a, int b, int c)
 {
     return (((a<=b) && (b<c)) || ((c<a) && (a<=b)) || ((b<c) &&(c<a)))? true : false;
+//    return (((a<=b) && (b<c)) || ((c>a) && (a>=b)) || ((b<c) &&(c<a)))? true : false;
+
 }
 bool Node::repeat1(int ackNo)
 {
@@ -173,12 +173,16 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         EV << "Frame arrival " << std::endl;
         EV << "Payload " << msg->getPayload();
         EV << std::endl;
-        EV << "Sequence number " << msg->getSeq_num();
+        EV << "Sequence number received" << msg->getSeq_num() << " and expected " <<frameExpected;
         EV << std::endl;
         EV << "Ack number " << msg->getAck_num();
         EV << std::endl;
+
         if(frameExpected == msg->getSeq_num())
             frameExpected++;
+//        else
+//            return;
+
         EV<<"ACKEXPECTED"<<AckExpected<<std::endl;
         EV<<"GETACKNUM"<<msg->getAck_num()<<std::endl;
         EV<<"NEXTTOSEND"<<nextFrameToSend<<std::endl;
@@ -186,11 +190,11 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         {
             nBuffered--;
             //if(atoi(timers[i]->getName()) == AckExpected)
-            if(timers[AckExpected] != nullptr)
+            if(timers[AckExpected % (MaxSEQ+1)] != nullptr)
             {
                 EV<<"CancelANDDELETE ";
-                cancelAndDelete(timers[AckExpected]);
-                timers[AckExpected] = nullptr;
+                cancelAndDelete(timers[AckExpected % (MaxSEQ+1)]);
+                timers[AckExpected % (MaxSEQ+1)] = nullptr;
             }
             //int temp = -1;
 //            for(int i=0; i<timers.size(); i++)
@@ -214,7 +218,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             //EV<<AckExpected;
             EV<<std::endl;
             AckExpected++;
-            AckExpected %= (MaxSEQ);
+//            AckExpected %= (MaxSEQ);
         }
         //delete(msg);
         break;
@@ -238,8 +242,10 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
     case 2:
         delete(msg);
         EV << "Repeat " << std::endl;
+        int x  = nBuffered;
+        nBuffered -= (nextFrameToSend - AckExpected);
         nextFrameToSend = AckExpected;
-        for (int i = 1; i <= nBuffered; i++)
+        for (int i = nBuffered; i < x; i++)
         {
             send_Data(msg);
         }
@@ -268,8 +274,8 @@ bool Node::NoisySend(FramedMessage_Base*& msg)
     {
         EV<<"Delayed";
         double delay = exponential(1 / delay_lambda);
-        send(msg, "outs", dest);
-        //sendDelayed(msg, delay, "outs", dest);
+//        send(msg, "outs", dest);
+        sendDelayed(msg, delay, "outs", dest);
     }
     else if(uniform(0,1) < duplication_probability)
     {
