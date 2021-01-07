@@ -21,6 +21,7 @@
 #include <vector>
 #include <bitset>
 #include <queue>
+#include <fstream>
 #define MaxSEQ 7
 #define timeOut 0.2
 #define interval 0.1
@@ -37,21 +38,24 @@ class Node : public cSimpleModule
     double delay_probability;
     double delay_lambda;
     std::string modifyMsg(std::string msg);
-    bool NoisySend(FramedMessage_Base*& msg);
-
+    bool NoisySend(FramedMessage_Base*& msg, bool useful);
     // GoBackN Members
     int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest;
     std::string buffer [MaxSEQ + 1];
-    std::vector<int> Ack;
     int id;
     FramedMessage_Base* timers[MaxSEQ + 1];
 
-    void send_Data();
+    void send_Data(bool useful);
     void start_Timer();
     void goBackN(FramedMessage_Base* msg, int whichCase);
     bool between(int a, int b, int c);
+
+    // Statistics Members
+    int totalGenerated, totalDropped, totalRetransmitted;
+    int usefulTransmittedSize, totaltransmittedSize;
   protected:
     virtual void initialize();
+    virtual void finish();
     virtual void handleMessage(cMessage *msg);
     std::string bitStuffing(const std::string& inputStream);
     std::string bitDeStuffing(const std::string& inputStream);

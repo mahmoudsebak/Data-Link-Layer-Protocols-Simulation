@@ -28,8 +28,26 @@ void Node::initialize()
     frameExpected = 0;
     nBuffered = 0;
 
+    totalGenerated = 0;
+    totalDropped = 0;
+    totalRetransmitted = 0;
+    usefulTransmittedSize = 0;
+    totaltransmittedSize = 0;
 }
 
+void Node::finish()
+{
+    std::ofstream myfile;
+    std::stringstream ss;
+    ss<<getIndex()<<".txt";
+    myfile.open (ss.str());
+    myfile << "Node "<<getIndex()<<" statistics for total of "<<simTime()<<" seconds: \n\n";
+    myfile <<" Total number of generated frames  = "<<totalGenerated<<std::endl;
+    myfile <<" Total number of dropped frames = "<<totalDropped<<std::endl;
+    myfile <<" Total number of re-transmitted frames = "<<totalRetransmitted<<std::endl;
+    myfile <<" Efficiency of transmission = "<<(usefulTransmittedSize * 1.0 / totaltransmittedSize) * 100 <<" %"<<std::endl;
+    //myfile.close();
+}
 void Node::handleMessage(cMessage *msg)
 {
     FramedMessage_Base* fmsg = check_and_cast<FramedMessage_Base*>(msg);
@@ -62,20 +80,21 @@ void Node::start_Timer()
     scheduleAt(simTime() + timeOut, timers[nextFrameToSend]);
     EV<<"CREATED Timer "<<nextFrameToSend<<std::endl;
 }
-void Node::send_Data()
+void Node::send_Data(bool useful)
 {
-    FramedMessage_Base* fmsg = new FramedMessage_Base("Hello");
+    FramedMessage_Base* fmsg = new FramedMessage_Base("");
     fmsg->setPayload(buffer[nextFrameToSend].c_str());
     fmsg->setSeq_num(nextFrameToSend);
     fmsg->setAck_num((frameExpected + MaxSEQ) % (MaxSEQ + 1));
-
+    totalGenerated ++;
     EV << "Payload " << fmsg->getPayload() << std::endl;
     EV << "Sequence number " << fmsg->getSeq_num() << std::endl;
     EV << "Ack number " << fmsg->getAck_num() << std::endl;
 
 //    bool duplicated = false;
 //    send(fmsg, "outs", dest);
-    bool duplicated = NoisySend(fmsg);
+
+    bool duplicated = NoisySend(fmsg, useful);
     start_Timer();
 
     nextFrameToSend += (duplicated)? 0 : 1;
@@ -129,7 +148,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             buffer[nextFrameToSend] = "Hello"; // Here
             nBuffered++;
             delete(msg);
-            send_Data();
+            send_Data(true);
             scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
         }
         else
@@ -142,7 +161,8 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         nextFrameToSend = AckExpected;
         for(int i = 1; i <= nBuffered; i++)
         {
-            send_Data();
+            totalRetransmitted ++;
+            send_Data(false);
         }
     }
 }
@@ -155,13 +175,16 @@ std::string Node::modifyMsg(std::string msg)
     EV<<"Modified"<<std::endl;
     return msg;
 }
-bool Node::NoisySend(FramedMessage_Base*& msg)
+bool Node::NoisySend(FramedMessage_Base*& msg, bool useful)
 {
+    bool dropped = false;
     if(uniform(0,1) < modification_probability)
         msg->setPayload(modifyMsg(msg->getPayload()).c_str());
     if(uniform(0,1) < loss_probability)
     {
         EV<<"Dropped"<<std::endl;
+        totalDropped ++;
+        dropped = true;
     }
     else if(uniform(0,1) < delay_probability)
     {
@@ -174,11 +197,17 @@ bool Node::NoisySend(FramedMessage_Base*& msg)
         EV<<"Duplicated"<<std::endl;
         send(msg, "outs", dest);
         send(new FramedMessage_Base(*msg), "outs", dest);
+        totaltransmittedSize += sizeof(msg->getPayload()) + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
+//        totaltransmittedSize += sizeof(*msg);
     }
     else
-    {
         send(msg, "outs", dest);
-    }
+    if(!dropped)
+    {
+        totaltransmittedSize += sizeof(msg->getPayload()) + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
+        //        totaltransmittedSize += sizeof(*msg);
+        if(useful)
+            usefulTransmittedSize += sizeof(msg->getPayload());        }
     return false;
 }
 std::string Node::bitStuffing(const std::string& inputStream){
