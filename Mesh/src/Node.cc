@@ -293,5 +293,135 @@ bool Node::NoisySend(FramedMessage_Base*& msg)
     }
     return false;
 }
+std::string Node::bitStuffing(const std::string& inputStream){
+    // Consider the following flag
+    // FLag is : 01111110
+    int counter = 0;
+    std::string stuffedBitStream = "01111110";
+    for (char i : inputStream){
+        if((i-48) == 1){
+            counter++;
+            stuffedBitStream +="1";
+            if (counter == 5){
+                counter = 0;
+                stuffedBitStream += "0";
+            }
+        }
+        else{
+            stuffedBitStream += "0";
+            counter = 0;
+        }
+    }
+    return stuffedBitStream + "01111110";
+}
+
+// Error Detection and Correction For the given stream
+// Construct Hamming Message
+std::string Node::hammingGenerator(const std::string& inputStream){
+    // Calculate extra bits (r)
+    int m = inputStream.size();
+    int r = 0;
+    while ((pow(2,r)-r) < (m+1)) r++;
+
+    std::string hammingString= inputStream;
+    for(int i =0 ; i< r ;i++){
+        hammingString.insert((int)pow(2,i)-1,"?");
+    }
+
+    for (int i=0;i < r ;i++){
+        std::vector<char>parityArr;
+        for (int k= (int)pow(2,i)-1; k< hammingString.size();k+= pow(2,i+1)){
+            for (int j = 0 ; j < (int)pow(2,i) ; j++) {
+                if(j+k >= hammingString.size()) break;
+                parityArr.push_back(hammingString[k+j]);
+            }
+        }
+        std::bitset<1> parityBit (parityArr[1]);
+        for(int l =2 ;l< parityArr.size();l++){
+            std::bitset<1> temp (parityArr[l]);
+            parityBit =parityBit ^ temp;
+        }
+        hammingString[(int)pow(2,i)-1] = parityBit == 1 ? '1' : '0';
+    }
+    return hammingString;
+}
+bool IsPowerOfTwo(unsigned int x){
+    return (x != 0) && ((x & (x - 1)) == 0);
+}
+
+// Error Detection and correction in Hamming
+std::string Node::errorDetectionCorrectionHamming(std::string message){
+    std::vector<char>messageParityBit;
+    std::string possibleSentMessage;
+    for (int i = 0; i < message.size(); ++i) {
+        if (IsPowerOfTwo(i+1))
+            messageParityBit.push_back(message[i]);
+        else
+            possibleSentMessage+=message[i];
+    }
+    std::string standardHammingMessage = hammingGenerator(possibleSentMessage);
+    int wrongIndex = 0 ;
+    int counter = 0 ;
+    for (int i=0; i< standardHammingMessage.size();i++){
+        if (IsPowerOfTwo(i+1)){
+            if(standardHammingMessage[i] == messageParityBit[counter]){
+                counter++;
+                continue;
+            }
+            else {
+                counter++;
+                wrongIndex+=(i+1);
+            }
+        }
+    }
+
+    if (wrongIndex != 0){
+        standardHammingMessage[wrongIndex-1] = (standardHammingMessage[wrongIndex-1] == '1')?'0':'1';
+    }
+
+    std::string output;
+    for (int i = 0; i < standardHammingMessage.size(); ++i) {
+        if (!IsPowerOfTwo(i+1))
+            output += standardHammingMessage[i];
+    }
+
+    return output;
+}
+std::string Node::bitDeStuffing(const std::string& inputStream){
+    // Consider the following flag
+    // FLag is : 01111110
+    int counter = 0;
+    std::string deStuffedBitStream;
+    for (int i=0;i<inputStream.size();i++){
+        if((inputStream[i]-48) == 1){
+            counter++;
+            deStuffedBitStream +="1";
+            if (counter == 5){
+                counter = 0;
+                i++;
+                continue;
+            }
+        }
+        else{
+            deStuffedBitStream += "0";
+            counter = 0;
+        }
+    }
+    return deStuffedBitStream;
+}
+std::string string2bits(std::string text){
+    std::string transformed;
+    char output[9];
+    for (int i = 0;i < text.size(); i++) {
+        itoa(text[i], output, 2);
+        for (int i = 7; i >= 0; --i) {
+            if(output[i] != '1' && output[i] != '0')
+                transformed += '0';
+        }
+        transformed += output;
+    }
+    return transformed;
+}
+
 
 
