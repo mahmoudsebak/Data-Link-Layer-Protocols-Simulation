@@ -2,13 +2,13 @@ package mesh;
 
 @license(LGPL);
 
-network Network
+network Mesh
 {
     parameters:
         int N = default(5);
     	
     submodules:
-        orchesterator: Orchestrator;
+//        orchesterator: Orchestrator;
         nodes[N]: Node;
       
      connections:
@@ -18,10 +18,10 @@ network Network
          }
          
          
-         for i=0..sizeof(nodes)-1 {
-         	nodes[i].outs++ --> orchesterator.ins++;
-         	nodes[i].ins++ <-- orchesterator.outs++;
-         }
+//         for i=0..sizeof(nodes)-1 {
+//         	nodes[i].outs++ --> orchesterator.ins++;
+//         	nodes[i].ins++ <-- orchesterator.outs++;
+//         }
          
            
 }

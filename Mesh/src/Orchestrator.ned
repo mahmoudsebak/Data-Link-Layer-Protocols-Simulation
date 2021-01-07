@@ -13,7 +13,7 @@
 // along with this program.  If not, see http://www.gnu.org/licenses/.
 // 
 
-package project2;
+package mesh;
 
 //
 // TODO auto-generated module

@@ -50,7 +50,6 @@ class Node : public cSimpleModule
     void start_Timer();
     void goBackN(FramedMessage_Base* msg, int whichCase);
     bool between(int a, int b, int c);
-    bool repeat1(int ackNo);
   protected:
     virtual void initialize();
     virtual void handleMessage(cMessage *msg);
