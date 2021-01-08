@@ -17,6 +17,7 @@
 #define __PROJECT2_ORCHESTRATOR_H_
 
 #include <omnetpp.h>
+#include "FramedMessage_m.h"
 
 using namespace omnetpp;
 

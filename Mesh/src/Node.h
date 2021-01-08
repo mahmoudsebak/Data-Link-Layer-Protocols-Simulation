@@ -29,6 +29,9 @@ using namespace omnetpp;
 
 class Node : public cSimpleModule
 {
+    // File Handle
+    std::fstream MyReadFile;
+    std::fstream MyoutputFile;
     // Noisy Channel Members
     double modification_probability;
     int modificationFrameLowerBit;
@@ -49,6 +52,8 @@ class Node : public cSimpleModule
     void start_Timer();
     void goBackN(FramedMessage_Base* msg, int whichCase);
     bool between(int a, int b, int c);
+    std::string string2bits(std::string text);
+    std::string binary2string(std::string binary);
 
     // Statistics Members
     int totalGenerated, totalDropped, totalRetransmitted;

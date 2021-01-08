@@ -4,6 +4,9 @@ Define_Module(Node);
 
 void Node::initialize()
 {
+    MyReadFile.open(std::to_string(getIndex()) + "_send.txt");
+    MyoutputFile.open(std::to_string(getIndex()) + "_recive.txt", std::fstream::out);
+    /*
     dest = 0;
     double interval2 = exponential(1 / par("lambda").doubleValue());
     if(getIndex() == 0)
@@ -12,6 +15,7 @@ void Node::initialize()
         scheduleAt(simTime() + interval2, new FramedMessage_Base("Continue"));
     else
         return;
+    */
     for (int i=0; i<MaxSEQ+1; i++)
         timers[i] = nullptr;
     // Initialize Noisy Channel Members
@@ -59,12 +63,20 @@ void Node::handleMessage(cMessage *msg)
             goBackN(fmsg, 1);
     }
     else {
-        goBackN(fmsg, 0);
-        if (atoi(fmsg->getName()) == getIndex())
-            bubble("Message received");
-        else
-            bubble("Wrong destination");
-        delete fmsg;
+
+        if(strcmp(fmsg->getName(), "start") == 0){
+            dest = atoi(fmsg->getPayload());
+            scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
+        } else if (strcmp(fmsg->getName(), "end") == 0){
+            return;
+        } else {
+            goBackN(fmsg, 0);
+            if (atoi(fmsg->getName()) == getIndex())
+                bubble("Message received");
+            else
+                bubble("Wrong destination");
+        }
+        // delete fmsg;
     }
 }
 void Node::start_Timer()
@@ -111,6 +123,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
     switch (whichCase)
     {
     case 0:
+    {
         EV << "Frame arrival " << std::endl;
         EV << "Payload " << msg->getPayload() << std::endl;
         EV << "Sequence number received " << msg->getSeq_num() << " and expected " << frameExpected << std::endl;
@@ -120,6 +133,9 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         {
             frameExpected++;
             frameExpected %= (MaxSEQ + 1);
+            std::string frame = bitDeStuffing(msg->getPayload());
+            std::string packet = errorDetectionCorrectionHamming(frame);
+            MyoutputFile << binary2string(packet) << std::endl;
         }
 
         EV<<"ACKEXPECTED "<<AckExpected<<std::endl;
@@ -140,20 +156,33 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
 
         }
         break;
+    }
     // TODO: Read Next frame from file
     case 1:
-        EV<<nBuffered<<std::endl;
-        if (nBuffered < MaxSEQ){
-            EV << "Send next frame " << std::endl;
-            buffer[nextFrameToSend] = "Hello"; // Here
-            nBuffered++;
-            delete(msg);
-            send_Data(true);
-            scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
+        {
+            std::string text;
+            if(getline (MyReadFile, text)){
+                std::string line = string2bits(text);
+                std::string packet = hammingGenerator(line);
+                std::string frame = bitStuffing(packet);
+                buffer[nextFrameToSend] = frame;
+            } else {
+                buffer[nextFrameToSend] = "end";
+            }
+
+            EV<<nBuffered<<std::endl;
+            if (nBuffered < MaxSEQ){
+                EV << "Send next frame " << std::endl;
+                nBuffered++;
+                // delete(msg);
+                send_Data(true);
+                if(buffer[nextFrameToSend] != "end")
+                    scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
+            }
+            else
+                scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
+            break;
         }
-        else
-            scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
-        break;
     // Re-send if there is timeout
     case 2:
 //        delete(msg);
@@ -309,7 +338,7 @@ std::string Node::bitDeStuffing(const std::string& inputStream){
     // FLag is : 01111110
     int counter = 0;
     std::string deStuffedBitStream;
-    for (int i=0;i<inputStream.size();i++){
+    for (int i=8;i<inputStream.size() - 8; i++){
         if((inputStream[i]-48) == 1){
             counter++;
             deStuffedBitStream +="1";
@@ -326,7 +355,7 @@ std::string Node::bitDeStuffing(const std::string& inputStream){
     }
     return deStuffedBitStream;
 }
-std::string string2bits(std::string text){
+std::string Node::string2bits(std::string text){
     std::string transformed;
     char output[9];
     for (int i = 0;i < text.size(); i++) {
@@ -340,5 +369,16 @@ std::string string2bits(std::string text){
     return transformed;
 }
 
+std::string Node::binary2string(std::string binary){
+    std::stringstream sstream(binary);
+    std::string output;
+    while(sstream.good()) {
+        std::bitset<8> bits;
+        sstream >> bits;
+        char c = char(bits.to_ulong());
+        output += c;
+   }
+    return output;
+}
 
 

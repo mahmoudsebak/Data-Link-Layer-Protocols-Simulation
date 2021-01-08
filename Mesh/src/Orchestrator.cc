@@ -50,10 +50,16 @@ void Orchestrator::handleMessage(cMessage *msg)
 
             EV <<"Orchestrator: start communication between sender: " << sender << ", reciver: " << rand << endl;
             reciver = (sender > reciver)? rand: rand - 1;
+            int port = (sender > reciver)? sender - 1: sender;
 
-            cMessage* msg1 = new cMessage(std::to_string(reciver).c_str(), 2);
-
+            FramedMessage_Base* msg1 = new FramedMessage_Base("start");
+            msg1->setPayload(std::to_string(reciver).c_str());
             send(msg1, "outs", sender);
+
+            FramedMessage_Base* msg2 = new FramedMessage_Base("start");
+            msg2->setPayload(std::to_string(port).c_str());
+            send(msg2, "outs", rand);
+
         }
     }
 }
