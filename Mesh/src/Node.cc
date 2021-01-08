@@ -69,6 +69,7 @@ void Node::handleMessage(cMessage *msg)
     else {
         if(strcmp(fmsg->getName(), "start") == 0){
             dest = atoi(fmsg->getPayload());
+            EV<<"My Pair is No. "<<dest<<std::endl;
             selfFinished = false;
             pairFinished = false;
             scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
@@ -183,6 +184,12 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             buffer[nextFrameToSend] = frame;
             send_Data(true, true);
         }
+        if(selfFinished && pairFinished)
+        {
+            cMessage* message = new cMessage(std::to_string(getIndex()).c_str());
+            message->setKind(2);
+            send(message, "outs", getParentModule()->par("N").intValue()-1);
+        }
         break;
     }
     // Read Next frame from file
@@ -213,6 +220,12 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             }
             else
                 scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
+            if(selfFinished && pairFinished)
+            {
+                cMessage* message = new cMessage(std::to_string(getIndex()).c_str());
+                message->setKind(2);
+                send(message, "outs", getParentModule()->par("N").intValue()-1);
+            }
             break;
         }
     // Re-send if there is timeout

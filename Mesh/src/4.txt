@@ -1,6 +1,6 @@
-Node 4 statistics for total of 31.771926654142 seconds: 
+Node 4 statistics for total of 90 seconds: 
 
- Total number of generated frames  = 0
- Total number of dropped frames = 0
- Total number of re-transmitted frames = 0
- Efficiency of transmission = nan %
+ Total number of generated frames  = 38
+ Total number of dropped frames = 7
+ Total number of re-transmitted frames = 20
+ Efficiency of transmission = 7.5 %

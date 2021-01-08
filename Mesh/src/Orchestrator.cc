@@ -30,6 +30,9 @@ void Orchestrator::initialize()
 
 void Orchestrator::handleMessage(cMessage *msg)
 {
+    for (int i =0; i< N; i++)
+        if(nodes[i])
+            EV<<"Node "<<i<<" is free";
     if( msg->getKind() == 2){
         nodes[atoi(msg->getName())] = true;
 
@@ -49,7 +52,7 @@ void Orchestrator::handleMessage(cMessage *msg)
             nodes[rand] = false;
 
             EV <<"Orchestrator: start communication between sender: " << sender << ", reciver: " << rand << endl;
-            reciver = (sender > reciver)? rand: rand - 1;
+            reciver = (sender > rand)? rand: rand - 1;
             int port = (sender > reciver)? sender - 1: sender;
 
             FramedMessage_Base* msg1 = new FramedMessage_Base("start");
