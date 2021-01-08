@@ -1,4 +1,4 @@
-Node 0 statistics for total of 30.1 seconds: 
+Node 0 statistics for total of 30.6 seconds: 
 
  Total number of generated frames  = 0
  Total number of dropped frames = 0

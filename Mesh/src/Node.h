@@ -43,12 +43,12 @@ class Node : public cSimpleModule
     std::string modifyMsg(std::string msg);
     bool NoisySend(FramedMessage_Base*& msg, bool useful);
     // GoBackN Members
-    int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest;
+    int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest, id;
+    bool isTransmitting;
     std::string buffer [MaxSEQ + 1];
-    int id;
     FramedMessage_Base* timers[MaxSEQ + 1];
 
-    void send_Data(bool useful);
+    void send_Data(bool useful, bool finish);
     void start_Timer();
     void goBackN(FramedMessage_Base* msg, int whichCase);
     bool between(int a, int b, int c);

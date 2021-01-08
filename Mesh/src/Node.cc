@@ -37,6 +37,8 @@ void Node::initialize()
     totalRetransmitted = 0;
     usefulTransmittedSize = 0;
     totaltransmittedSize = 0;
+
+    isTransmitting = false;
 }
 
 void Node::finish()
@@ -57,26 +59,28 @@ void Node::handleMessage(cMessage *msg)
     FramedMessage_Base* fmsg = check_and_cast<FramedMessage_Base*>(msg);
     if (fmsg->isSelfMessage()) {
         EV << "Sending to "<< dest <<" from source " << getIndex() << "\n";
+        // Timeout or continue receiving
         if(strcmp(msg->getName(), "Continue") != 0)
             goBackN(fmsg, 2);
         else
             goBackN(fmsg, 1);
     }
     else {
-
         if(strcmp(fmsg->getName(), "start") == 0){
             dest = atoi(fmsg->getPayload());
+            isTransmitting = true;
             scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
-        } else if (strcmp(fmsg->getName(), "end") == 0){
-            return;
-        } else {
+        }
+         else {
+            // Recieve a frame
+            EV << "Receiving from "<< dest <<" to " << getIndex() << "\n";
             goBackN(fmsg, 0);
             if (atoi(fmsg->getName()) == getIndex())
                 bubble("Message received");
             else
                 bubble("Wrong destination");
         }
-        // delete fmsg;
+         delete fmsg;
     }
 }
 void Node::start_Timer()
@@ -92,7 +96,7 @@ void Node::start_Timer()
     scheduleAt(simTime() + timeOut, timers[nextFrameToSend]);
     EV<<"CREATED Timer "<<nextFrameToSend<<std::endl;
 }
-void Node::send_Data(bool useful)
+void Node::send_Data(bool useful, bool finish)
 {
     FramedMessage_Base* fmsg = new FramedMessage_Base("");
     fmsg->setPayload(buffer[nextFrameToSend].c_str());
@@ -107,7 +111,8 @@ void Node::send_Data(bool useful)
 //    send(fmsg, "outs", dest);
 
     bool duplicated = NoisySend(fmsg, useful);
-    start_Timer();
+    if(!finish)
+        start_Timer();
 
     nextFrameToSend += (duplicated)? 0 : 1;
     nextFrameToSend %= (MaxSEQ + 1);
@@ -129,13 +134,17 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         EV << "Sequence number received " << msg->getSeq_num() << " and expected " << frameExpected << std::endl;
         EV << "Ack number " << msg->getAck_num() << std::endl;
 
+        std::string frame = "", packet = "";
         if(frameExpected == msg->getSeq_num())
         {
             frameExpected++;
             frameExpected %= (MaxSEQ + 1);
-            std::string frame = bitDeStuffing(msg->getPayload());
-            std::string packet = errorDetectionCorrectionHamming(frame);
-            MyoutputFile << binary2string(packet) << std::endl;
+            frame = bitDeStuffing(msg->getPayload());
+            packet = errorDetectionCorrectionHamming(frame);
+            if(binary2string(packet).substr(0, 3) != "end")
+                MyoutputFile << binary2string(packet) << std::endl;
+            else
+                EV<<"Received  endddddddddddddddddd"<<binary2string(packet)<<std::endl;
         }
 
         EV<<"ACKEXPECTED "<<AckExpected<<std::endl;
@@ -155,28 +164,33 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             AckExpected %= (MaxSEQ + 1);
 
         }
+        if(binary2string(packet).substr(0, 3) == "end")
+            isTransmitting = false;
         break;
     }
-    // TODO: Read Next frame from file
+    // Read Next frame from file
     case 1:
         {
-            std::string text;
-            if(getline (MyReadFile, text)){
-                std::string line = string2bits(text);
-                std::string packet = hammingGenerator(line);
-                std::string frame = bitStuffing(packet);
-                buffer[nextFrameToSend] = frame;
-            } else {
-                buffer[nextFrameToSend] = "end";
+            std::string text, line, packet, frame;
+            bool finish = false;
+            if(!getline (MyReadFile, text)){
+                text = "end";
+                finish = true;
+                isTransmitting = false;
             }
 
-            EV<<nBuffered<<std::endl;
+            line = string2bits(text);
+            packet = hammingGenerator(line);
+            frame = bitStuffing(packet);
+            buffer[nextFrameToSend] = frame;
+
+            EV<<"Buffer index "<<nBuffered<<std::endl;
             if (nBuffered < MaxSEQ){
                 EV << "Send next frame " << std::endl;
                 nBuffered++;
-                // delete(msg);
-                send_Data(true);
-                if(buffer[nextFrameToSend] != "end")
+                delete(msg);
+                send_Data(true, finish);
+                if(isTransmitting)
                     scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
             }
             else
@@ -191,7 +205,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         for(int i = 1; i <= nBuffered; i++)
         {
             totalRetransmitted ++;
-            send_Data(false);
+            send_Data(false, false);
         }
     }
 }
@@ -217,7 +231,7 @@ bool Node::NoisySend(FramedMessage_Base*& msg, bool useful)
     }
     else if(uniform(0,1) < delay_probability)
     {
-        EV<<"Delayed";
+        EV<<"Delayed"<<std::endl;
         double delay = exponential(1 / delay_lambda);
         sendDelayed(msg, delay, "outs", dest);
     }
