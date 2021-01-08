@@ -38,7 +38,8 @@ void Node::initialize()
     usefulTransmittedSize = 0;
     totaltransmittedSize = 0;
 
-    isTransmitting = false;
+    selfFinished = true;
+    pairFinished = true;
 }
 
 void Node::finish()
@@ -68,7 +69,8 @@ void Node::handleMessage(cMessage *msg)
     else {
         if(strcmp(fmsg->getName(), "start") == 0){
             dest = atoi(fmsg->getPayload());
-            isTransmitting = true;
+            selfFinished = false;
+            pairFinished = false;
             scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
         }
          else {
@@ -107,12 +109,18 @@ void Node::send_Data(bool useful, bool finish)
     EV << "Sequence number " << fmsg->getSeq_num() << std::endl;
     EV << "Ack number " << fmsg->getAck_num() << std::endl;
 
-//    bool duplicated = false;
+    bool duplicated = false;
 //    send(fmsg, "outs", dest);
 
-    bool duplicated = NoisySend(fmsg, useful);
     if(!finish)
+    {
         start_Timer();
+        duplicated = NoisySend(fmsg, useful);
+    }
+    else
+    {
+        send(fmsg, "outs", dest);
+    }
 
     nextFrameToSend += (duplicated)? 0 : 1;
     nextFrameToSend %= (MaxSEQ + 1);
@@ -144,7 +152,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             if(binary2string(packet).substr(0, 3) != "end")
                 MyoutputFile << binary2string(packet) << std::endl;
             else
-                EV<<"Received  endddddddddddddddddd"<<binary2string(packet)<<std::endl;
+                EV<<"Received  endddddddddddddddddd"<<std::endl;
         }
 
         EV<<"ACKEXPECTED "<<AckExpected<<std::endl;
@@ -165,7 +173,16 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
 
         }
         if(binary2string(packet).substr(0, 3) == "end")
-            isTransmitting = false;
+            pairFinished = true;
+        else if(selfFinished)
+        {
+            std::string line, packet, frame;
+            line = string2bits("end");
+            packet = hammingGenerator(line);
+            frame = bitStuffing(packet);
+            buffer[nextFrameToSend] = frame;
+            send_Data(true, true);
+        }
         break;
     }
     // Read Next frame from file
@@ -176,7 +193,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             if(!getline (MyReadFile, text)){
                 text = "end";
                 finish = true;
-                isTransmitting = false;
+                selfFinished = true;
             }
 
             line = string2bits(text);
@@ -189,8 +206,9 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
                 EV << "Send next frame " << std::endl;
                 nBuffered++;
                 delete(msg);
-                send_Data(true, finish);
-                if(isTransmitting)
+                if(!pairFinished)
+                    send_Data(true, finish);
+                if(!selfFinished && !pairFinished)
                     scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
             }
             else
@@ -200,13 +218,15 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
     // Re-send if there is timeout
     case 2:
 //        delete(msg);
-        EV << "Repeat " << std::endl;
-        nextFrameToSend = AckExpected;
-        for(int i = 1; i <= nBuffered; i++)
-        {
-            totalRetransmitted ++;
-            send_Data(false, false);
-        }
+//        if(!selfFinished && !pairFinished){
+            EV << "Repeat " << std::endl;
+            nextFrameToSend = AckExpected;
+            for(int i = 1; i <= nBuffered; i++)
+            {
+                totalRetransmitted ++;
+                send_Data(false, false);
+            }
+//        }
     }
 }
 std::string Node::modifyMsg(std::string msg)

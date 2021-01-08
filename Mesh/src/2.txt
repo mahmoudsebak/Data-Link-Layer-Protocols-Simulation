@@ -1,4 +1,4 @@
-Node 2 statistics for total of 30.6 seconds: 
+Node 2 statistics for total of 31.771926654142 seconds: 
 
  Total number of generated frames  = 7
  Total number of dropped frames = 0

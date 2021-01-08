@@ -44,7 +44,7 @@ class Node : public cSimpleModule
     bool NoisySend(FramedMessage_Base*& msg, bool useful);
     // GoBackN Members
     int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest, id;
-    bool isTransmitting;
+    bool selfFinished, pairFinished;
     std::string buffer [MaxSEQ + 1];
     FramedMessage_Base* timers[MaxSEQ + 1];
 
