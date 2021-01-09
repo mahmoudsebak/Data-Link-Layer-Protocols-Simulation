@@ -1,6 +1,6 @@
 Node 0 statistics for total of 90 seconds: 
 
- Total number of generated frames  = 33
- Total number of dropped frames = 1
- Total number of re-transmitted frames = 4
- Efficiency of transmission = 29.1667 %
+ Total number of generated frames  = 5
+ Total number of dropped frames = 0
+ Total number of re-transmitted frames = 0
+ Efficiency of transmission = 50 %

@@ -30,9 +30,6 @@ void Orchestrator::initialize()
 
 void Orchestrator::handleMessage(cMessage *msg)
 {
-    for (int i =0; i< N; i++)
-        if(nodes[i])
-            EV<<"Node "<<i<<" is free";
     if( msg->getKind() == 2){
         nodes[atoi(msg->getName())] = true;
 
@@ -64,5 +61,9 @@ void Orchestrator::handleMessage(cMessage *msg)
             send(msg2, "outs", rand);
 
         }
+
     }
+    for (int i =0; i< N; i++)
+        if(nodes[i])
+            EV<<"Node "<<i<<" is free"<<std::endl;
 }

@@ -22,6 +22,8 @@
 #include <bitset>
 #include <queue>
 #include <fstream>
+#include <stdio.h>
+
 #define MaxSEQ 7
 #define timeOut 0.2
 #define interval 0.1
@@ -44,7 +46,8 @@ class Node : public cSimpleModule
     bool NoisySend(FramedMessage_Base*& msg, bool useful);
     // GoBackN Members
     int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest, id;
-    bool selfFinished, pairFinished;
+//    bool selfFinished, pairFinished;
+    bool isTransmitting, pairFinished;
     std::string buffer [MaxSEQ + 1];
     FramedMessage_Base* timers[MaxSEQ + 1];
 

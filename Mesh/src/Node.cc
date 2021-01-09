@@ -38,8 +38,10 @@ void Node::initialize()
     usefulTransmittedSize = 0;
     totaltransmittedSize = 0;
 
-    selfFinished = true;
+//    selfFinished = true;
     pairFinished = true;
+
+    isTransmitting = false;
 }
 
 void Node::finish()
@@ -59,19 +61,28 @@ void Node::handleMessage(cMessage *msg)
 {
     FramedMessage_Base* fmsg = check_and_cast<FramedMessage_Base*>(msg);
     if (fmsg->isSelfMessage()) {
-        EV << "Sending to "<< dest <<" from source " << getIndex() << "\n";
+        int pairIndex = (getIndex() <= dest)? dest + 1: dest;
+        EV << "Sending to "<< pairIndex <<" from source " << getIndex() << "\n";
         // Timeout or continue receiving
         if(strcmp(msg->getName(), "Continue") != 0)
             goBackN(fmsg, 2);
-        else
+        else if (isTransmitting and !pairFinished)
             goBackN(fmsg, 1);
     }
     else {
         if(strcmp(fmsg->getName(), "start") == 0){
             dest = atoi(fmsg->getPayload());
-            EV<<"My Pair is No. "<<dest<<std::endl;
-            selfFinished = false;
+            isTransmitting = true;
             pairFinished = false;
+            nextFrameToSend = 0;
+            AckExpected = 0;
+            frameExpected = 0;
+            nBuffered = 0;
+//            MyoutputFile.open(std::to_string(getIndex()) + "_recive.txt", std::fstream::out);
+            MyReadFile.close();
+            MyReadFile.open(std::to_string(getIndex()) + "_send.txt");
+
+//            initialize();
             scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
         }
          else {
@@ -143,17 +154,20 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         EV << "Sequence number received " << msg->getSeq_num() << " and expected " << frameExpected << std::endl;
         EV << "Ack number " << msg->getAck_num() << std::endl;
 
-        std::string frame = "", packet = "";
+        std::string frame = bitDeStuffing(msg->getPayload());
+        std::string packet = errorDetectionCorrectionHamming(frame);
         if(frameExpected == msg->getSeq_num())
         {
             frameExpected++;
             frameExpected %= (MaxSEQ + 1);
             frame = bitDeStuffing(msg->getPayload());
             packet = errorDetectionCorrectionHamming(frame);
-            if(binary2string(packet).substr(0, 3) != "end")
+            if(binary2string(packet).substr(0, 3) != "end" && binary2string(packet).substr(0, 7) != "pairend")
                 MyoutputFile << binary2string(packet) << std::endl;
-            else
+            else if(binary2string(packet).substr(0, 3) == "end")
                 EV<<"Received  endddddddddddddddddd"<<std::endl;
+
+
         }
 
         EV<<"ACKEXPECTED "<<AckExpected<<std::endl;
@@ -173,23 +187,53 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             AckExpected %= (MaxSEQ + 1);
 
         }
-        if(binary2string(packet).substr(0, 3) == "end")
-            pairFinished = true;
-        else if(selfFinished)
+        if(binary2string(packet).substr(0, 7) == "pairend")
         {
+            isTransmitting = false;
+            pairFinished = true;
+            cMessage* message = new cMessage(std::to_string(getIndex()).c_str());
+            message->setKind(2);
+            send(message, "outs", getParentModule()->par("N").intValue()-1);
+
+            int pairIndex = (getIndex() <= dest)? dest + 1: dest;
+            cMessage* message2 = new cMessage(std::to_string(pairIndex).c_str());
+            message2->setKind(2);
+            send(message2, "outs", getParentModule()->par("N").intValue()-1);
+            EV<<"Received  endddddddddddddddddd pairrrrrrrr"<<std::endl;
+
+        }
+        else if(binary2string(packet).substr(0, 3) == "end")
+        {
+            isTransmitting = false;
+            pairFinished = true;
+//            cMessage* message = new cMessage(std::to_string(getIndex()).c_str());
+//            message->setKind(2);
+//            send(message, "outs", getParentModule()->par("N").intValue()-1);
+
             std::string line, packet, frame;
-            line = string2bits("end");
+            line = string2bits("pairend");
             packet = hammingGenerator(line);
             frame = bitStuffing(packet);
             buffer[nextFrameToSend] = frame;
             send_Data(true, true);
         }
-        if(selfFinished && pairFinished)
-        {
-            cMessage* message = new cMessage(std::to_string(getIndex()).c_str());
-            message->setKind(2);
-            send(message, "outs", getParentModule()->par("N").intValue()-1);
-        }
+
+//            pairFinished = true;
+//        else if(selfFinished)
+//        {
+//            std::string line, packet, frame;
+//            line = string2bits("end");
+//            packet = hammingGenerator(line);
+//            frame = bitStuffing(packet);
+//            buffer[nextFrameToSend] = frame;
+//            send_Data(true, true);
+//        }
+//        if(selfFinished && pairFinished)
+//        {
+//            cMessage* message = new cMessage(std::to_string(getIndex()).c_str());
+//            message->setKind(2);
+//            send(message, "outs", getParentModule()->par("N").intValue()-1);
+//        }
         break;
     }
     // Read Next frame from file
@@ -200,7 +244,8 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             if(!getline (MyReadFile, text)){
                 text = "end";
                 finish = true;
-                selfFinished = true;
+//                selfFinished = true;
+                isTransmitting = false;
             }
 
             line = string2bits(text);
@@ -213,25 +258,23 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
                 EV << "Send next frame " << std::endl;
                 nBuffered++;
                 delete(msg);
-                if(!pairFinished)
-                    send_Data(true, finish);
-                if(!selfFinished && !pairFinished)
+//                if(!pairFinished)
+//                    send_Data(true, finish);
+//                if(!selfFinished && !pairFinished)
+//                    scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
+                send_Data(true, finish);
+                if(isTransmitting)
                     scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
             }
             else
                 scheduleAt(simTime() + interval, new FramedMessage_Base("Continue"));
-            if(selfFinished && pairFinished)
-            {
-                cMessage* message = new cMessage(std::to_string(getIndex()).c_str());
-                message->setKind(2);
-                send(message, "outs", getParentModule()->par("N").intValue()-1);
-            }
             break;
         }
     // Re-send if there is timeout
     case 2:
 //        delete(msg);
 //        if(!selfFinished && !pairFinished){
+        if(!pairFinished){
             EV << "Repeat " << std::endl;
             nextFrameToSend = AckExpected;
             for(int i = 1; i <= nBuffered; i++)
@@ -239,7 +282,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
                 totalRetransmitted ++;
                 send_Data(false, false);
             }
-//        }
+        }
     }
 }
 std::string Node::modifyMsg(std::string msg)

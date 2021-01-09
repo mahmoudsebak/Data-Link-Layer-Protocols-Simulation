@@ -1,6 +1,6 @@
 Node 2 statistics for total of 90 seconds: 
 
- Total number of generated frames  = 6
+ Total number of generated frames  = 5
  Total number of dropped frames = 1
- Total number of re-transmitted frames = 2
- Efficiency of transmission = 30 %
+ Total number of re-transmitted frames = 0
+ Efficiency of transmission = 50 %
