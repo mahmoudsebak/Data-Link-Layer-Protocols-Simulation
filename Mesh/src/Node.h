@@ -22,8 +22,8 @@
 #include <bitset>
 #include <fstream>
 
-#define MaxSEQ 7
-#define timeOut 0.2
+#define MaxSEQ 15
+#define timeOut 0.3
 #define interval 0.1
 using namespace omnetpp;
 

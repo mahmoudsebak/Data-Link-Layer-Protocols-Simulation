@@ -1,6 +1,6 @@
-Node 2 statistics for total of 86580.1 seconds: 
+Node 2 statistics for total of 10321.5 seconds: 
 
- Total number of generated frames  = 3519
- Total number of dropped frames = 312
- Total number of re-transmitted frames = 634
- Efficiency of transmission = 35.7862 %
+ Total number of generated frames  = 8590
+ Total number of dropped frames = 840
+ Total number of re-transmitted frames = 4518
+ Efficiency of transmission = 23.349 %

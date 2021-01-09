@@ -45,7 +45,7 @@ void Node::finish()
     myfile <<" Total number of dropped frames = "<<totalDropped<<std::endl;
     myfile <<" Total number of re-transmitted frames = "<<totalRetransmitted<<std::endl;
     myfile <<" Efficiency of transmission = "<<(usefulTransmittedSize * 1.0 / totaltransmittedSize) * 100 <<" %"<<std::endl;
-    //myfile.close();
+
 }
 void Node::handleMessage(cMessage *msg)
 {
@@ -133,7 +133,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
 
         std::string frame = bitDeStuffing(msg->getPayload());
         std::string packet = errorDetectionCorrectionHamming(frame);
-        if(frameExpected == msg->getSeq_num())
+        if(frameExpected == msg->getSeq_num() && !pairFinished)
         {
             frameExpected++;
             frameExpected %= (MaxSEQ + 1);
@@ -263,7 +263,7 @@ bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
         EV<<"Duplicated"<<std::endl;
         send(msg, "outs", dest);
         send(new FramedMessage_Base(*msg), "outs", dest);
-        totaltransmittedSize += sizeof(msg->getPayload()) + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
+        // totaltransmittedSize += sizeof(msg->getPayload()) + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
 //        totaltransmittedSize += sizeof(*msg);
     }
     else
@@ -273,7 +273,8 @@ bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
         totaltransmittedSize += sizeof(msg->getPayload()) + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
         //        totaltransmittedSize += sizeof(*msg);
         if(useful)
-            usefulTransmittedSize += sizeof(msg->getPayload());        }
+            usefulTransmittedSize += sizeof(msg->getPayload());
+    }
     return false;
 }
 std::string Node::bitStuffing(const std::string& inputStream){
