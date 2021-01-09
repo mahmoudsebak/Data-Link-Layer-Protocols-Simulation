@@ -20,9 +20,7 @@
 #include <omnetpp.h>
 #include <vector>
 #include <bitset>
-#include <queue>
 #include <fstream>
-#include <stdio.h>
 
 #define MaxSEQ 7
 #define timeOut 0.2
@@ -34,6 +32,7 @@ class Node : public cSimpleModule
     // File Handle
     std::fstream MyReadFile;
     std::fstream MyoutputFile;
+
     // Noisy Channel Members
     double modification_probability;
     int modificationFrameLowerBit;
@@ -42,11 +41,13 @@ class Node : public cSimpleModule
     double duplication_probability;
     double delay_probability;
     double delay_lambda;
-    std::string modifyMsg(std::string msg);
-    bool NoisySend(FramedMessage_Base*& msg, bool useful);
+
+    // Statistics Members
+    int totalGenerated, totalDropped, totalRetransmitted;
+    int usefulTransmittedSize, totaltransmittedSize;
+
     // GoBackN Members
     int nextFrameToSend, AckExpected, frameExpected, nBuffered, dest, id;
-//    bool selfFinished, pairFinished;
     bool isTransmitting, pairFinished;
     std::string buffer [MaxSEQ + 1];
     FramedMessage_Base* timers[MaxSEQ + 1];
@@ -55,12 +56,10 @@ class Node : public cSimpleModule
     void start_Timer();
     void goBackN(FramedMessage_Base* msg, int whichCase);
     bool between(int a, int b, int c);
+    bool NoisySend(FramedMessage_Base* msg, bool useful);
+    std::string modifyMsg(std::string msg);
     std::string string2bits(std::string text);
     std::string binary2string(std::string binary);
-
-    // Statistics Members
-    int totalGenerated, totalDropped, totalRetransmitted;
-    int usefulTransmittedSize, totaltransmittedSize;
   protected:
     virtual void initialize();
     virtual void finish();
