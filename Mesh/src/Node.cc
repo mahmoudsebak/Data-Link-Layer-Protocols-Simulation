@@ -270,10 +270,11 @@ bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
         send(msg, "outs", dest);
     if(!dropped)
     {
-        totaltransmittedSize += sizeof(msg->getPayload()) + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
+
+        totaltransmittedSize += msg->getPayloadSize() + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
         //        totaltransmittedSize += sizeof(*msg);
         if(useful)
-            usefulTransmittedSize += sizeof(msg->getPayload());
+            usefulTransmittedSize += msg->getPayloadSize();
     }
     return false;
 }

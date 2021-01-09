@@ -86,6 +86,7 @@ class FramedMessage_Base : public ::omnetpp::cPacket
     virtual void setSeq_num(int seq_num);
     virtual int getAck_num() const;
     virtual void setAck_num(int ack_num);
+    virtual int getPayloadSize() const;
     virtual const char * getPayload() const;
     virtual void setPayload(const char * payload);
     virtual bits& getCheck_bits();

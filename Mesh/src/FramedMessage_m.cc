@@ -251,6 +251,11 @@ const char * FramedMessage_Base::getPayload() const
     return this->payload.c_str();
 }
 
+int FramedMessage_Base::getPayloadSize() const
+{
+    return this->payload.size();
+}
+
 void FramedMessage_Base::setPayload(const char * payload)
 {
     this->payload = payload;
