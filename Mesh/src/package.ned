@@ -5,7 +5,7 @@ package mesh;
 network Mesh
 {
     parameters:
-        int N = default(5);
+        int N = default(6);
     	
     submodules:
 	    orchesterator: Orchestrator;

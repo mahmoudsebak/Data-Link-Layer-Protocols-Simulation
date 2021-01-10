@@ -1,6 +1,6 @@
-Node 3 statistics for total of 19353.75 seconds: 
+Node 3 statistics for total of 5190.2 seconds: 
 
- Total number of generated frames  = 6701
- Total number of dropped frames = 53
- Total number of re-transmitted frames = 466
- Efficiency of transmission = 90.6868 %
+ Total number of generated frames  = 2190
+ Total number of dropped frames = 23
+ Total number of re-transmitted frames = 177
+ Efficiency of transmission = 89.4577 %
