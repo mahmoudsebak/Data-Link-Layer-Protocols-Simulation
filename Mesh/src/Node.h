@@ -67,7 +67,7 @@ class Node : public cSimpleModule
     std::string bitStuffing(const std::string& inputStream);
     std::string bitDeStuffing(const std::string& inputStream);
     std::string hammingGenerator(const std::string& inputStream);
-    std::string errorDetectionCorrectionHamming(std::string message);
+    std::string errorDetectionCorrectionHamming(std::string message, bool flag);
 };
 
 #endif

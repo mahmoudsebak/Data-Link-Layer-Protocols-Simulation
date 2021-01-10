@@ -2,6 +2,22 @@
 
 Define_Module(Node);
 
+
+int countOnes(std::string str) {
+    int count = 0;
+    for(int i = 3; i > -1; i--){
+        if(str[i] == '1') count++;
+        else break;
+    }
+
+    for(int i = 5; i < str.size(); i++){
+        if(str[i] == '1') count++;
+        else break;
+    }
+
+    return count;
+}
+
 void Node::initialize()
 {
     MyReadFile.open(std::to_string(getIndex()) + "_send.txt");
@@ -21,16 +37,13 @@ void Node::initialize()
     AckExpected = 0;
     frameExpected = 0;
     nBuffered = 0;
-
     totalGenerated = 0;
     totalDropped = 0;
     totalRetransmitted = 0;
     usefulTransmittedSize = 0;
     totaltransmittedSize = 0;
 
-//    selfFinished = true;
     pairFinished = true;
-
     isTransmitting = false;
 }
 
@@ -81,6 +94,7 @@ void Node::handleMessage(cMessage *msg)
          delete fmsg;
     }
 }
+
 void Node::start_Timer()
 {
     if(timers[nextFrameToSend] != nullptr)
@@ -101,7 +115,7 @@ void Node::send_Data(bool useful, bool finish)
     fmsg->setSeq_num(nextFrameToSend);
     fmsg->setAck_num((frameExpected + MaxSEQ) % (MaxSEQ + 1));
     totalGenerated ++;
-    EV << "Payload " << fmsg->getPayload() << std::endl;
+    EV << "Payload " <<  binary2string(errorDetectionCorrectionHamming(bitDeStuffing(fmsg->getPayload()), false)) << std::endl;
     EV << "Sequence number " << fmsg->getSeq_num() << std::endl;
     EV << "Ack number " << fmsg->getAck_num() << std::endl;
 
@@ -127,21 +141,19 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
     case 0:
     {
         EV << "Frame arrival " << std::endl;
-        EV << "Payload " << msg->getPayload() << std::endl;
         EV << "Sequence number received " << msg->getSeq_num() << " and expected " << frameExpected << std::endl;
         EV << "Ack number " << msg->getAck_num() << std::endl;
 
         std::string frame = bitDeStuffing(msg->getPayload());
-        std::string packet = errorDetectionCorrectionHamming(frame);
+        std::string packet = errorDetectionCorrectionHamming(frame, true);
         if(frameExpected == msg->getSeq_num() && !pairFinished)
         {
             frameExpected++;
             frameExpected %= (MaxSEQ + 1);
-            frame = bitDeStuffing(msg->getPayload());
-            packet = errorDetectionCorrectionHamming(frame);
-            if(binary2string(packet).substr(0, 3) != "end" && binary2string(packet).substr(0, 7) != "pairend")
+            if(binary2string(packet).substr(0, 3) != "end" && binary2string(packet).substr(0, 7) != "pairend"){
                 MyoutputFile << binary2string(packet) << std::endl;
-            else if(binary2string(packet).substr(0, 3) == "end")
+                EV << "Payload " << binary2string(packet) << std::endl;
+            } else if(binary2string(packet).substr(0, 3) == "end")
                 EV<<"Received End"<<std::endl;
         }
 
@@ -234,11 +246,15 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
 }
 std::string Node::modifyMsg(std::string msg)
 {
-    modificationFrameLowerBit = std::max(0, modificationFrameLowerBit);
-    modificationFrameUpperBit = std::min(modificationFrameUpperBit, int(msg.size()));
+    modificationFrameLowerBit = std::max(12, modificationFrameLowerBit);
+    modificationFrameUpperBit = std::min(modificationFrameUpperBit, int(msg.size()) - 12);
     int bit = int(uniform(modificationFrameLowerBit, modificationFrameUpperBit));
+    while(countOnes(msg.substr(bit-4, 9)) >= 4)
+        bit = int(uniform(modificationFrameLowerBit, modificationFrameUpperBit));
     msg[bit] = (msg[bit] == '0') ? '1' : '0';
     EV<<"Modified"<<std::endl;
+    EV << "Bit modified number " << bit << std::endl;
+    EV << "Payload After Modification " <<  binary2string( errorDetectionCorrectionHamming(bitDeStuffing(msg), false) ) << std::endl;
     return msg;
 }
 bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
@@ -263,8 +279,6 @@ bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
         EV<<"Duplicated"<<std::endl;
         send(msg, "outs", dest);
         send(new FramedMessage_Base(*msg), "outs", dest);
-        // totaltransmittedSize += sizeof(msg->getPayload()) + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
-//        totaltransmittedSize += sizeof(*msg);
     }
     else
         send(msg, "outs", dest);
@@ -272,7 +286,6 @@ bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
     {
 
         totaltransmittedSize += msg->getPayloadSize() + sizeof(msg->getSeq_num()) + sizeof(msg->getAck_num());
-        //        totaltransmittedSize += sizeof(*msg);
         if(useful)
             usefulTransmittedSize += msg->getPayloadSize();
     }
@@ -282,6 +295,7 @@ std::string Node::bitStuffing(const std::string& inputStream){
     // Consider the following flag
     // FLag is : 01111110
     int counter = 0;
+    bool flag = false;
     std::string stuffedBitStream = "01111110";
     for (char i : inputStream){
         if((i-48) == 1){
@@ -289,6 +303,7 @@ std::string Node::bitStuffing(const std::string& inputStream){
             stuffedBitStream +="1";
             if (counter == 5){
                 counter = 0;
+                flag = true;
                 stuffedBitStream += "0";
             }
         }
@@ -296,6 +311,10 @@ std::string Node::bitStuffing(const std::string& inputStream){
             stuffedBitStream += "0";
             counter = 0;
         }
+    }
+    if(flag) {
+        EV << "Packet before framing "<< inputStream << std::endl;
+        EV << "Packet after framing "<< stuffedBitStream + "01111110" << std::endl;
     }
     return stuffedBitStream + "01111110";
 }
@@ -335,7 +354,7 @@ bool IsPowerOfTwo(unsigned int x){
 }
 
 // Error Detection and correction in Hamming
-std::string Node::errorDetectionCorrectionHamming(std::string message){
+std::string Node::errorDetectionCorrectionHamming(std::string message, bool correction){
     std::vector<char>messageParityBit;
     std::string possibleSentMessage;
     for (int i = 0; i < message.size(); ++i) {
@@ -355,12 +374,12 @@ std::string Node::errorDetectionCorrectionHamming(std::string message){
             }
             else {
                 counter++;
-                wrongIndex+=(i+1);
+                wrongIndex += (i+1);
             }
         }
     }
 
-    if (wrongIndex != 0){
+    if (wrongIndex != 0 && correction){
         standardHammingMessage[wrongIndex-1] = (standardHammingMessage[wrongIndex-1] == '1')?'0':'1';
     }
 
@@ -383,7 +402,7 @@ std::string Node::bitDeStuffing(const std::string& inputStream){
             deStuffedBitStream +="1";
             if (counter == 5){
                 counter = 0;
-                i++;
+                if(i+1 < inputStream.size() - 8 && inputStream[i + 1] - 48 == 0) i++;
                 continue;
             }
         }

@@ -17,6 +17,15 @@
 
 Define_Module(Orchestrator);
 
+int avaliable(bool* arr, int n){
+    int ans = 0;
+    for(int i =0 ; i <n ; i++) {
+        if(arr[i]) ans++;
+    }
+    return ans;
+}
+
+
 void Orchestrator::initialize()
 {
     N = par("N").intValue();
@@ -25,7 +34,6 @@ void Orchestrator::initialize()
 
     scheduleAt( simTime() + 30, new cMessage("Generate new message"));
 
-    // TODO - Generated method body
 }
 
 void Orchestrator::handleMessage(cMessage *msg)
@@ -35,6 +43,9 @@ void Orchestrator::handleMessage(cMessage *msg)
 
     } else {
         scheduleAt( simTime() + 30, new cMessage("Generate new message", 1));
+
+        if(avaliable(nodes, N) < 2) return;
+
         int rand = uniform(0, 2);
         if( rand == 1 ){
             int sender, reciver;
