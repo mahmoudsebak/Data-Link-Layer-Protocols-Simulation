@@ -20,6 +20,7 @@ int countOnes(std::string str) {
 
 void Node::initialize()
 {
+    freopen("logs.txt", "a", stdout);
     MyReadFile.open(std::to_string(getIndex()) + "_send.txt");
     MyoutputFile.open(std::to_string(getIndex()) + "_recive.txt", std::fstream::out);
     for (int i=0; i<MaxSEQ+1; i++)
@@ -66,6 +67,8 @@ void Node::handleMessage(cMessage *msg)
     if (fmsg->isSelfMessage()) {
         int pairIndex = (getIndex() <= dest)? dest + 1: dest;
         EV << "Sending to "<< pairIndex <<" from source " << getIndex() << "\n";
+        std::cout <<"-----------------------------------------------------------------------------" << endl;
+        std::cout << "Sending to "<< pairIndex <<" from source " << getIndex() << "\n";
         // Timeout or continue receiving
         if(strcmp(msg->getName(), "Continue") != 0)
             goBackN(fmsg, 2);
@@ -87,7 +90,10 @@ void Node::handleMessage(cMessage *msg)
         }
          else {
             // Recieve a frame
-            EV << "Receiving from "<< dest <<" to " << getIndex() << "\n";
+            int pairIndex = (getIndex() <= dest)? dest + 1: dest;
+            EV <<  getIndex() << ": Receiving from "<< pairIndex << "\n";
+            std::cout << "-----------------------------------------------------------------------------" << std::endl;
+            std::cout << getIndex() << ": Receiving from "<< pairIndex << "\n";
             goBackN(fmsg, 0);
             bubble("Message received");
         }
@@ -100,6 +106,7 @@ void Node::start_Timer()
     if(timers[nextFrameToSend] != nullptr)
     {
         EV<<"Timer "<<nextFrameToSend <<" is already created"<<std::endl;
+        std::cout<<"Timer "<<nextFrameToSend <<" is already created"<<std::endl;
         cancelAndDelete(timers[nextFrameToSend]);
     }
     std::stringstream ss;
@@ -107,6 +114,7 @@ void Node::start_Timer()
     timers[nextFrameToSend] =  new FramedMessage_Base(ss.str().c_str());
     scheduleAt(simTime() + timeOut, timers[nextFrameToSend]);
     EV<<"CREATED Timer "<<nextFrameToSend<<std::endl;
+    std::cout<<"CREATED Timer "<<nextFrameToSend<<std::endl;
 }
 void Node::send_Data(bool useful, bool finish)
 {
@@ -118,6 +126,10 @@ void Node::send_Data(bool useful, bool finish)
     EV << "Payload " <<  binary2string(errorDetectionCorrectionHamming(bitDeStuffing(fmsg->getPayload()), false)) << std::endl;
     EV << "Sequence number " << fmsg->getSeq_num() << std::endl;
     EV << "Ack number " << fmsg->getAck_num() << std::endl;
+
+    std::cout << "Payload " <<  binary2string(errorDetectionCorrectionHamming(bitDeStuffing(fmsg->getPayload()), false)) << std::endl;
+    std::cout << "Sequence number " << fmsg->getSeq_num() << std::endl;
+    std::cout << "Ack number " << fmsg->getAck_num() << std::endl;
 
     if(!finish)
     {
@@ -144,6 +156,10 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
         EV << "Sequence number received " << msg->getSeq_num() << " and expected " << frameExpected << std::endl;
         EV << "Ack number " << msg->getAck_num() << std::endl;
 
+        std::cout << "Frame arrival " << std::endl;
+        std::cout << "Sequence number received " << msg->getSeq_num() << " and expected " << frameExpected << std::endl;
+        std::cout << "Ack number " << msg->getAck_num() << std::endl;
+
         std::string frame = bitDeStuffing(msg->getPayload());
         std::string packet = errorDetectionCorrectionHamming(frame, true);
         if(frameExpected == msg->getSeq_num() && !pairFinished)
@@ -153,13 +169,19 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             if(binary2string(packet).substr(0, 3) != "end" && binary2string(packet).substr(0, 7) != "pairend"){
                 MyoutputFile << binary2string(packet) << std::endl;
                 EV << "Payload " << binary2string(packet) << std::endl;
+                std::cout << "Payload " << binary2string(packet) << std::endl;
             } else if(binary2string(packet).substr(0, 3) == "end")
-                EV<<"Received End"<<std::endl;
+                EV <<"Received End"<<std::endl;
+                std::cout <<"Received End"<<std::endl;
         }
 
         EV<<"ACKEXPECTED "<<AckExpected<<std::endl;
         EV<<"GETACKNUM "<<msg->getAck_num()<<std::endl;
         EV<<"NEXTTOSEND "<<nextFrameToSend<<std::endl;
+
+        std::cout<<"ACKEXPECTED "<<AckExpected<<std::endl;
+        std::cout<<"GETACKNUM "<<msg->getAck_num()<<std::endl;
+        std::cout<<"NEXTTOSEND "<<nextFrameToSend<<std::endl;
 
         while(between(AckExpected, msg->getAck_num(), nextFrameToSend))
         {
@@ -167,6 +189,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             if(timers[AckExpected] != nullptr)
             {
                 EV<<"CANCELANDDELETE Timer "<<AckExpected<<std::endl;
+                std::cout<<"CANCELANDDELETE Timer "<<AckExpected<<std::endl;
                 cancelAndDelete(timers[AckExpected]);
                 timers[AckExpected] = nullptr;
             }
@@ -187,7 +210,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             message2->setKind(2);
             send(message2, "outs", getParentModule()->par("N").intValue()-1);
             EV<<"Received PairEnd"<<std::endl;
-
+            std::cout<<"Received PairEnd"<<std::endl;
         }
         else if(binary2string(packet).substr(0, 3) == "end")
         {
@@ -219,8 +242,10 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
             buffer[nextFrameToSend] = frame;
 
             EV<<"Buffer index "<<nBuffered<<std::endl;
+            std::cout<<"Buffer index "<<nBuffered<<std::endl;
             if (nBuffered < MaxSEQ){
                 EV << "Send next frame " << std::endl;
+                std::cout << "Send next frame " << std::endl;
                 nBuffered++;
                 delete(msg);
                 send_Data(true, finish);
@@ -235,6 +260,7 @@ void Node::goBackN(FramedMessage_Base* msg, int whichCase)
     case 2:
         if(!pairFinished){
             EV << "Repeat " << std::endl;
+            std::cout << "Repeat " << std::endl;
             nextFrameToSend = AckExpected;
             for(int i = 1; i <= nBuffered; i++)
             {
@@ -255,6 +281,11 @@ std::string Node::modifyMsg(std::string msg)
     EV<<"Modified"<<std::endl;
     EV << "Bit modified number " << bit << std::endl;
     EV << "Payload After Modification " <<  binary2string( errorDetectionCorrectionHamming(bitDeStuffing(msg), false) ) << std::endl;
+
+    std::cout <<"Modified"<<std::endl;
+    std::cout << "Bit modified number " << bit << std::endl;
+    std::cout << "Payload After Modification " <<  binary2string( errorDetectionCorrectionHamming(bitDeStuffing(msg), false) ) << std::endl;
+
     return msg;
 }
 bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
@@ -265,18 +296,21 @@ bool Node::NoisySend(FramedMessage_Base* msg, bool useful)
     if(uniform(0,1) < loss_probability)
     {
         EV<<"Dropped"<<std::endl;
+        std::cout <<"Dropped"<<std::endl;
         totalDropped ++;
         dropped = true;
     }
     else if(uniform(0,1) < delay_probability)
     {
         EV<<"Delayed"<<std::endl;
+        std::cout <<"Delayed"<<std::endl;
         double delay = exponential(1 / delay_lambda);
         sendDelayed(msg, delay, "outs", dest);
     }
     else if(uniform(0,1) < duplication_probability)
     {
         EV<<"Duplicated"<<std::endl;
+        std::cout<<"Duplicated"<<std::endl;
         send(msg, "outs", dest);
         send(new FramedMessage_Base(*msg), "outs", dest);
     }
@@ -315,6 +349,9 @@ std::string Node::bitStuffing(const std::string& inputStream){
     if(flag) {
         EV << "Packet before framing "<< inputStream << std::endl;
         EV << "Packet after framing "<< stuffedBitStream + "01111110" << std::endl;
+
+        std::cout << "Packet before framing "<< inputStream << std::endl;
+        std::cout << "Packet after framing "<< stuffedBitStream + "01111110" << std::endl;
     }
     return stuffedBitStream + "01111110";
 }

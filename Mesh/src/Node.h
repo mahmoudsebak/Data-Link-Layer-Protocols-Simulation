@@ -32,6 +32,7 @@ class Node : public cSimpleModule
     // File Handle
     std::fstream MyReadFile;
     std::fstream MyoutputFile;
+    std::ofstream logsFile;
 
     // Noisy Channel Members
     double modification_probability;

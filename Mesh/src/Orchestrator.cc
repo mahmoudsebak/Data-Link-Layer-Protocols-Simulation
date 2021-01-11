@@ -28,6 +28,7 @@ int avaliable(bool* arr, int n){
 
 void Orchestrator::initialize()
 {
+    freopen("logs.txt", "w", stdout);
     N = par("N").intValue();
     nodes = new bool[N];
     for(int i = 0; i < N; i++) nodes[i] = true;
@@ -60,6 +61,8 @@ void Orchestrator::handleMessage(cMessage *msg)
             nodes[rand] = false;
 
             EV <<"Orchestrator: start communication between sender: " << sender << ", reciver: " << rand << endl;
+            std::cout <<"-----------------------------------------------------------------------------" << endl;
+            std::cout <<"Orchestrator: start communication between sender: " << sender << ", reciver: " << rand << endl;
             reciver = (sender > rand)? rand: rand - 1;
             int port = (sender > reciver)? sender - 1: sender;
 
@@ -75,6 +78,8 @@ void Orchestrator::handleMessage(cMessage *msg)
 
     }
     for (int i =0; i< N; i++)
-        if(nodes[i])
+        if(nodes[i]){
             EV<<"Node "<<i<<" is free"<<std::endl;
+            std::cout<<"Node "<<i<<" is free"<<std::endl;
+        }
 }
